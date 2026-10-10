@@ -29,7 +29,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.5'     # ← FIX: versi valid stable
+          flutter-version: '3.47.7'
           channel: 'stable'
 
       - name: Prepare Project
@@ -69,13 +69,16 @@ jobs:
           echo "PROJECT_ROOT=$PROJECT_ROOT" >> "$GITHUB_ENV"
           echo "Detected Flutter project root: $PROJECT_ROOT"
 
-      - name: Patch Gradle Wrapper          # ← FIX: auto-patch gradle version
+      - name: Patch Gradle Wrapper
         run: |
+          set -e
           GRADLE_PROPS=$(find "$PROJECT_ROOT/android/gradle/wrapper" -name "gradle-wrapper.properties" 2>/dev/null | head -n 1)
           if [ -n "$GRADLE_PROPS" ]; then
             sed -i 's|gradle-[0-9]*\.[0-9]*\.[0-9]*-bin.zip|gradle-8.14.0-bin.zip|g' "$GRADLE_PROPS"
             echo "Patched gradle wrapper:"
             cat "$GRADLE_PROPS"
+          else
+            echo "gradle-wrapper.properties tidak ditemukan, skip patch."
           fi
 
       - name: Build APK
@@ -88,7 +91,7 @@ jobs:
             dart run build_runner build --delete-conflicting-outputs
           fi
 
-          flutter build apk --release --android-skip-build-dependency-validation  # ← FIX: bypass check
+          flutter build apk --release --android-skip-build-dependency-validation
 
       - name: Locate APK
         run: |
