@@ -24,12 +24,12 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '21'
+          java-version: '17'
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.47.7'
+          flutter-version: '3.24.5'
           channel: 'stable'
 
       - name: Prepare Project
@@ -60,7 +60,7 @@ jobs:
 
           PUBSPEC=$(find project -maxdepth 5 -type f -name pubspec.yaml | head -n 1)
           if [ -z "$PUBSPEC" ]; then
-            echo "::error::pubspec.yaml tidak ditemukan di dalam ZIP. Pastikan ini project Flutter yang valid."
+            echo "::error::pubspec.yaml tidak ditemukan di dalam ZIP."
             find project -maxdepth 3
             exit 1
           fi
@@ -73,24 +73,25 @@ jobs:
         run: |
           set -e
 
-          # Patch gradle wrapper
+          # Patch gradle wrapper ke 8.9 (kompatibel Flutter 3.24.x)
           GRADLE_PROPS=$(find "$PROJECT_ROOT/android/gradle/wrapper" -name "gradle-wrapper.properties" 2>/dev/null | head -n 1)
           if [ -n "$GRADLE_PROPS" ]; then
-            sed -i 's|gradle-[0-9]*\.[0-9]*\.[0-9]*-bin.zip|gradle-8.14.0-bin.zip|g' "$GRADLE_PROPS"
+            sed -i 's|gradle-[0-9]*\.[0-9]*\.[0-9]*-bin.zip|gradle-8.9.0-bin.zip|g' "$GRADLE_PROPS"
             echo "Patched gradle wrapper:"
             cat "$GRADLE_PROPS"
-          else
-            echo "gradle-wrapper.properties tidak ditemukan, skip."
           fi
 
-          # Patch font_awesome_flutter ke versi kompatibel Flutter 3.47
-          if grep -q "font_awesome_flutter" "$PROJECT_ROOT/pubspec.yaml"; then
-            sed -i 's/font_awesome_flutter:.*$/font_awesome_flutter: ^10.8.0/' "$PROJECT_ROOT/pubspec.yaml"
-            echo "Patched font_awesome_flutter → ^10.8.0"
-          fi
+          # Downgrade package yang butuh Flutter 3.47+ ke versi kompatibel 3.24.x
+          PUBSPEC="$PROJECT_ROOT/pubspec.yaml"
 
-          # Hapus pubspec.lock supaya pub get resolve ulang dengan versi yang benar
+          sed -i 's/image_gallery_saver_plus:.*$/image_gallery_saver_plus: ^4.0.1/' "$PUBSPEC"
+          sed -i 's/font_awesome_flutter:.*$/font_awesome_flutter: ^10.7.0/' "$PUBSPEC"
+
+          # Hapus pubspec.lock supaya resolve ulang bersih
           rm -f "$PROJECT_ROOT/pubspec.lock"
+
+          echo "=== pubspec.yaml (dependencies section) ==="
+          grep -A 50 "^dependencies:" "$PUBSPEC" | head -60
 
       - name: Build APK
         run: |
@@ -102,7 +103,7 @@ jobs:
             dart run build_runner build --delete-conflicting-outputs
           fi
 
-          flutter build apk --release --android-skip-build-dependency-validation
+          flutter build apk --release
 
       - name: Locate APK
         run: |
