@@ -82,13 +82,7 @@ jobs:
           fi
 
           # 2. Hapus dependency_overrides lama kalau ada
-          python3 -c "
-import re, sys
-p = sys.argv[1]
-c = open(p).read()
-c = re.sub(r'\ndependency_overrides:.*?(?=\n\S|\Z)', '', c, flags=re.DOTALL)
-open(p, 'w').write(c)
-" "$PUBSPEC"
+          python3 -c "import re,sys; p=sys.argv[1]; c=open(p).read(); c=re.sub(r'\ndependency_overrides:.*?(?=\n\S|\Z)', '', c, flags=re.DOTALL); open(p,'w').write(c)" "$PUBSPEC"
 
           # 3. Tambah dependency_overrides baru
           printf '%s\n' '' 'dependency_overrides:' \
