@@ -78,11 +78,20 @@ jobs:
             grep distributionUrl "$GRADLE_PROPS"
           fi
 
+      - name: Pin font_awesome_flutter
+        run: |
+          set -e
+          PUBSPEC="$PROJECT_ROOT/pubspec.yaml"
+          python3 -c "import re,sys; p=sys.argv[1]; c=open(p).read(); c=re.sub(r'\ndependency_overrides:.*?(?=\n\S|\Z)', '', c, flags=re.DOTALL); open(p,'w').write(c)" "$PUBSPEC"
+          printf '%s\n' '' 'dependency_overrides:' '  font_awesome_flutter: ^11.0.0' >> "$PUBSPEC"
+          rm -f "$PROJECT_ROOT/pubspec.lock"
+          echo "✓ font_awesome_flutter dipin ke ^11.0.0"
+          tail -5 "$PUBSPEC"
+
       - name: Build APK
         run: |
           set -e
           cd "$PROJECT_ROOT"
-          rm -f pubspec.lock
           flutter pub get
 
           if grep -q "build_runner" pubspec.yaml; then
