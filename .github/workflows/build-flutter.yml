@@ -72,26 +72,45 @@ jobs:
       - name: Patch Dependencies
         run: |
           set -e
+          PUBSPEC="$PROJECT_ROOT/pubspec.yaml"
 
-          # Patch gradle wrapper ke 8.9 (kompatibel Flutter 3.24.x)
+          # 1. Patch gradle wrapper ke versi kompatibel Flutter 3.24.x
           GRADLE_PROPS=$(find "$PROJECT_ROOT/android/gradle/wrapper" -name "gradle-wrapper.properties" 2>/dev/null | head -n 1)
           if [ -n "$GRADLE_PROPS" ]; then
             sed -i 's|gradle-[0-9]*\.[0-9]*\.[0-9]*-bin.zip|gradle-8.9.0-bin.zip|g' "$GRADLE_PROPS"
-            echo "Patched gradle wrapper:"
-            cat "$GRADLE_PROPS"
+            echo "✓ Gradle wrapper patched"
           fi
 
-          # Downgrade package yang butuh Flutter 3.47+ ke versi kompatibel 3.24.x
-          PUBSPEC="$PROJECT_ROOT/pubspec.yaml"
+          # 2. Hapus dependency_overrides lama kalau ada (hindari duplikasi)
+          python3 - "$PUBSPEC" << 'PYEOF'
+import sys, re
+content = open(sys.argv[1]).read()
+# Hapus blok dependency_overrides yang sudah ada
+content = re.sub(r'\ndependency_overrides:.*?(?=\n\S|\Z)', '', content, flags=re.DOTALL)
+open(sys.argv[1], 'w').write(content)
+PYEOF
 
-          sed -i 's/image_gallery_saver_plus:.*$/image_gallery_saver_plus: ^4.0.1/' "$PUBSPEC"
-          sed -i 's/font_awesome_flutter:.*$/font_awesome_flutter: ^10.7.0/' "$PUBSPEC"
+          # 3. Inject dependency_overrides baru di akhir pubspec
+          cat >> "$PUBSPEC" << 'EOF'
 
-          # Hapus pubspec.lock supaya resolve ulang bersih
+dependency_overrides:
+  # Fix: butuh Flutter 3.47+ tapi kita pakai 3.24.5
+  image_gallery_saver_plus: ^4.0.1
+  # Fix: IconData jadi final class di Flutter 3.47+
+  font_awesome_flutter: ^10.7.0
+  # Fix: geolocator_android <4.7 tidak set compileSdk
+  geolocator: ^13.0.4
+  geolocator_android: ^4.7.0
+  # Fix: youtube_player versi lama tidak kompatibel AGP terbaru
+  youtube_player_flutter: ^9.1.3
+EOF
+
+          # 4. Hapus pubspec.lock supaya resolve ulang bersih
           rm -f "$PROJECT_ROOT/pubspec.lock"
 
-          echo "=== pubspec.yaml (dependencies section) ==="
-          grep -A 50 "^dependencies:" "$PUBSPEC" | head -60
+          echo "✓ dependency_overrides injected"
+          echo "=== Tail pubspec.yaml ==="
+          tail -20 "$PUBSPEC"
 
       - name: Build APK
         run: |
