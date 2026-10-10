@@ -81,35 +81,27 @@ jobs:
             echo "✓ Gradle wrapper patched"
           fi
 
-          # 2. Hapus dependency_overrides lama kalau ada (hindari duplikasi)
-          python3 - "$PUBSPEC" << 'PYEOF'
-import sys, re
-content = open(sys.argv[1]).read()
-# Hapus blok dependency_overrides yang sudah ada
-content = re.sub(r'\ndependency_overrides:.*?(?=\n\S|\Z)', '', content, flags=re.DOTALL)
-open(sys.argv[1], 'w').write(content)
-PYEOF
+          # 2. Hapus dependency_overrides lama kalau ada
+          python3 -c "
+import re, sys
+p = sys.argv[1]
+c = open(p).read()
+c = re.sub(r'\ndependency_overrides:.*?(?=\n\S|\Z)', '', c, flags=re.DOTALL)
+open(p, 'w').write(c)
+" "$PUBSPEC"
 
-          # 3. Inject dependency_overrides baru di akhir pubspec
-          cat >> "$PUBSPEC" << 'EOF'
-
-dependency_overrides:
-  # Fix: butuh Flutter 3.47+ tapi kita pakai 3.24.5
-  image_gallery_saver_plus: ^4.0.1
-  # Fix: IconData jadi final class di Flutter 3.47+
-  font_awesome_flutter: ^10.7.0
-  # Fix: geolocator_android <4.7 tidak set compileSdk
-  geolocator: ^13.0.4
-  geolocator_android: ^4.7.0
-  # Fix: youtube_player versi lama tidak kompatibel AGP terbaru
-  youtube_player_flutter: ^9.1.3
-EOF
+          # 3. Tambah dependency_overrides baru
+          printf '%s\n' '' 'dependency_overrides:' \
+            '  image_gallery_saver_plus: ^4.0.1' \
+            '  font_awesome_flutter: ^10.7.0' \
+            '  geolocator: ^13.0.4' \
+            '  geolocator_android: ^4.7.0' \
+            '  youtube_player_flutter: ^9.1.3' >> "$PUBSPEC"
 
           # 4. Hapus pubspec.lock supaya resolve ulang bersih
           rm -f "$PROJECT_ROOT/pubspec.lock"
 
           echo "✓ dependency_overrides injected"
-          echo "=== Tail pubspec.yaml ==="
           tail -20 "$PUBSPEC"
 
       - name: Build APK
