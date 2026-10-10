@@ -69,24 +69,35 @@ jobs:
           echo "PROJECT_ROOT=$PROJECT_ROOT" >> "$GITHUB_ENV"
           echo "Detected Flutter project root: $PROJECT_ROOT"
 
-      - name: Patch Gradle Wrapper
+      - name: Patch Dependencies
         run: |
           set -e
+
+          # Patch gradle wrapper
           GRADLE_PROPS=$(find "$PROJECT_ROOT/android/gradle/wrapper" -name "gradle-wrapper.properties" 2>/dev/null | head -n 1)
           if [ -n "$GRADLE_PROPS" ]; then
             sed -i 's|gradle-[0-9]*\.[0-9]*\.[0-9]*-bin.zip|gradle-8.14.0-bin.zip|g' "$GRADLE_PROPS"
             echo "Patched gradle wrapper:"
             cat "$GRADLE_PROPS"
           else
-            echo "gradle-wrapper.properties tidak ditemukan, skip patch."
+            echo "gradle-wrapper.properties tidak ditemukan, skip."
           fi
+
+          # Patch font_awesome_flutter ke versi kompatibel Flutter 3.47
+          if grep -q "font_awesome_flutter" "$PROJECT_ROOT/pubspec.yaml"; then
+            sed -i 's/font_awesome_flutter:.*$/font_awesome_flutter: ^10.8.0/' "$PROJECT_ROOT/pubspec.yaml"
+            echo "Patched font_awesome_flutter → ^10.8.0"
+          fi
+
+          # Hapus pubspec.lock supaya pub get resolve ulang dengan versi yang benar
+          rm -f "$PROJECT_ROOT/pubspec.lock"
 
       - name: Build APK
         run: |
           set -e
           cd "$PROJECT_ROOT"
-          flutter pub upgrade
-          
+          flutter pub get
+
           if grep -q "build_runner" pubspec.yaml; then
             dart run build_runner build --delete-conflicting-outputs
           fi
