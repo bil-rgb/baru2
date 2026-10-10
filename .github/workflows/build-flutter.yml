@@ -89,7 +89,6 @@ jobs:
             '  image_gallery_saver_plus: ^4.0.1' \
             '  font_awesome_flutter: ^10.7.0' \
             '  geolocator: ^13.0.4' \
-            '  geolocator_android: ^4.7.0' \
             '  youtube_player_flutter: ^9.1.3' >> "$PUBSPEC"
 
           # 4. Hapus pubspec.lock supaya resolve ulang bersih
